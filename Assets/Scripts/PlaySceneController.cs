@@ -63,6 +63,9 @@ public class PlaySceneController : MonoBehaviour
     private bool _isEnded = false;
     private bool _isHUDInit = true;
 
+    // 레인별 누르고 있는 롱노트 추적 배열(인덱스 0~3이 레인 1~4에 대응)
+    private NoteObject[] _heldNotes = new NoteObject[4];
+
     // 판정 표시 시간
     private float _judgeShowTimer = 0.0f;
     private float _judgeShowDuration = 0.5f;
@@ -70,7 +73,8 @@ public class PlaySceneController : MonoBehaviour
     // 인스펙터 연결 필드
     [Header("노트")]
     [SerializeField] private RectTransform noteContainer; // 노트들이 생성될 부모 RectTransform
-    [SerializeField] private GameObject notePrefab; // 노트 프리팹
+    [SerializeField] private GameObject notePrefab;       // 노트 프리팹
+    [SerializeField] private GameObject longNotePrefab;   // 롱노트 프리팹
 
     [Header("오디오")]
     [SerializeField] private AudioSource musicSource; // 음악 재생용 AudioSource
@@ -164,7 +168,7 @@ public class PlaySceneController : MonoBehaviour
 
     private void SpawnNote(NoteData data)
     {
-        GameObject prefab = notePrefab;
+        GameObject prefab = data.isLong ? longNotePrefab : notePrefab;
         if (prefab == null) return;
         GameObject go = Instantiate(prefab, noteContainer);
         NoteObject note = go.GetComponent<NoteObject>();
@@ -186,8 +190,30 @@ public class PlaySceneController : MonoBehaviour
             // 노트가 판정선을 지나치고 Good 판정 범위를 벗어났다면 자동 Miss 처리
             if (!note.IsJudged && CurrentGameTime - note.Data.time > GoodRange) ApplyJudge(JudgeType.Miss, note);
 
+            if (note.IsHolding)
+            {
+                double endTime = note.Data.time + note.Data.longDuration;
+                if(CurrentGameTime >= endTime)
+                {
+                    note.IsHolding = false;
+                    note.IsJudged  = true;
+                    _currentScore += 2; // 롱노트는 끝까지 유지하면 Perfect 판정으로 간주
+                    _currentCombo++;
+                    int laneIdx = note.Data.lane - 1; // 레인 번호는 1~4이므로 인덱스 보정
+                    _heldNotes[laneIdx] = null;
+                    RefreshHUD();
+                }
+            }
+
             // 판정 완료된 노트 제거
-            if (note.IsJudged) { _activeNotes.RemoveAt(i); Destroy(note.gameObject); }
+            if (note.IsJudged && !note.IsHolding)
+            {
+                // 롱노트는 끝부분까지 화면에 남겨둠
+                if (note.Data.isLong && note.Data.time + note.Data.longDuration > CurrentGameTime) continue;
+
+                // 롱노트가 아니면 즉시 제거
+                _activeNotes.RemoveAt(i); Destroy(note.gameObject);
+            }
         }
     }
 
@@ -235,7 +261,17 @@ public class PlaySceneController : MonoBehaviour
 
 
         JudgeType judge = CalcJudge(minDiff);
-        ApplyJudge(judge, closest);
+
+        if (closest.Data.isLong)
+        {
+            ApplyJudge(judge, closest);
+            closest.IsHolding = true;
+            _heldNotes[lane] = closest;
+        }
+        else
+        {
+            ApplyJudge(judge, closest);
+        }
     }
 
     private JudgeType CalcJudge(double diff)
@@ -289,7 +325,19 @@ public class PlaySceneController : MonoBehaviour
 
     private void HandleLaneReleased(int lane)
     {
-        // 롱노트 미구현 상태이므로 비워둠
+        NoteObject held = _heldNotes[lane];
+        if (held == null) return;
+
+        double endTime = held.Data.time + held.Data.longDuration;
+
+        // 롱노트의 끝부분보다 일찍 떼는 경우 Miss 처리, GoodRange만큼의 오차는 허용
+        if (CurrentGameTime < endTime - GoodRange)
+        {
+            held.IsHolding = false;
+            _heldNotes[lane] = null;
+            held.PlayLongMissEffect();
+            ApplyJudge(JudgeType.Miss, held);
+        }
     }
 
     private void HandlePausePressed()
