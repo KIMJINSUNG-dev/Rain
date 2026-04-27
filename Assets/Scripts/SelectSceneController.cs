@@ -18,15 +18,23 @@ public class SelectSceneController : MonoBehaviour
     [SerializeField] private float minSpeed = 0.5f;
     [SerializeField] private float maxSpeed = 5.0f;
 
+    // 오프셋 조절 변경 폭
+    [SerializeField] private int intOffsetStep = 1;
+    // 오프셋 조절 최소 및 최대 값
+    [SerializeField] private int minOffset = -40;
+    [SerializeField] private int maxOffset = 40;
+
+
     // 곡 목록을 표시하는 TextMeshProUGUI 컴포넌트 배열, 인스펙터에서 연결
     [SerializeField] private TextMeshProUGUI[] _songTitleTexts;
 
-    // 선택 중인 플레이 정보(곡명/난이도/레벨/레인속도)를 표시하는 TextMeshProUGUI 컴포넌트
+    // 선택 중인 플레이 정보(곡명/난이도/레벨/레인속도/오프셋)를 표시하는 TextMeshProUGUI 컴포넌트
     [SerializeField] private TextMeshProUGUI _selectedTitleText;
     [SerializeField] private TextMeshProUGUI _selectedDiffText;
     [SerializeField] private TextMeshProUGUI _selectedLevelText;
     [SerializeField] private TextMeshProUGUI _selectedBPMText;
     [SerializeField] private TextMeshProUGUI _speedText;
+    [SerializeField] private TextMeshProUGUI _offsetText;
 
     // 반복 탐색 수행 관리를 위한 정보를 저장하는 변수
 
@@ -90,6 +98,8 @@ public class SelectSceneController : MonoBehaviour
             InputReader.Instance.OnConfirmed        += HandleConfirm;
             InputReader.Instance.OnSpeedUp          += HandleSpeedUp;
             InputReader.Instance.OnSpeedDown        += HandleSpeedDown;
+            InputReader.Instance.OnOffsetUp         += HandleOffsetUp;
+            InputReader.Instance.OnOffsetDown       += HandleOffsetDown;
         }
     }
 
@@ -102,6 +112,8 @@ public class SelectSceneController : MonoBehaviour
             InputReader.Instance.OnConfirmed        -= HandleConfirm;
             InputReader.Instance.OnSpeedUp          -= HandleSpeedUp;
             InputReader.Instance.OnSpeedDown        -= HandleSpeedDown;
+            InputReader.Instance.OnOffsetUp         -= HandleOffsetUp;
+            InputReader.Instance.OnOffsetDown       -= HandleOffsetDown;
         }
     }
 
@@ -220,6 +232,26 @@ public class SelectSceneController : MonoBehaviour
         RefreshUI();
     }
 
+    private void HandleOffsetUp()
+    {
+        // 입력이 아직 활성화되지 않은 경우 무시
+        if (!_inputEnabled) return;
+        
+        var gm = GameManager.Instance;
+        gm.InputOffsetStep = Mathf.Clamp(gm.InputOffsetStep + intOffsetStep, minOffset, maxOffset);
+        RefreshUI();
+    }
+
+    private void HandleOffsetDown()
+    {
+        // 입력이 아직 활성화되지 않은 경우 무시
+        if (!_inputEnabled) return;
+
+        var gm = GameManager.Instance;
+        gm.InputOffsetStep = Mathf.Clamp(gm.InputOffsetStep - intOffsetStep, minOffset, maxOffset);
+        RefreshUI();
+    }
+
     // 이전에 선택했던 곡/난이도/레인속도 정보를 GameManager에서 가져와서
     // SelectSceneController의 변수에 복원하는 메서드
     private void RestorePrevSelect()
@@ -257,7 +289,8 @@ public class SelectSceneController : MonoBehaviour
             }
 
             _songTitleTexts[i].text = songList[i].title;
-            _songTitleTexts[i].color = (i == _songIndex ) ? Color.yellow : Color.white;
+            // 선택 중인 항목 색상 헥사코드: #4FC3F7
+            _songTitleTexts[i].color = (i == _songIndex ) ? new Color(0.31f, 0.76f, 0.97f) : Color.white;
         }
 
         switch (_diffIndex)
@@ -278,5 +311,19 @@ public class SelectSceneController : MonoBehaviour
 
         _selectedBPMText.text = $"BPM {songList[_songIndex].bpm}";
         _speedText.text       = $"×{_speed}";
+        var gm = GameManager.Instance;
+        if (gm.InputOffsetStep == 0)
+        {
+            _offsetText.text = $"Offset: ±0ms";
+        }
+        else if (gm.InputOffsetStep > 0)
+        {
+
+            _offsetText.text = $"Offset: +{gm.InputOffsetStep * 5}ms";
+        }
+        else
+        {
+            _offsetText.text = $"Offset: {gm.InputOffsetStep * 5}ms";
+        }
     }
 }

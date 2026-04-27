@@ -32,9 +32,11 @@ public class GameManager : MonoBehaviour
     }
 
     // SelectScene에서 PlayScene으로 전달할 정보
-    public SongInfo SelectedSong    { get; set; }         // 현재 선택된 곡 정보
-    public int      SelectedDiffIdx { get; set; } = 0;    // 현재 선택된 난이도 인덱스(0: easy, 1: normal, 2: hard), 기본값: 0(easy)
-    public float    SelectedSpeed   { get; set; } = 1.0f; // 현재 선택된 레인 속도, 기본값: 1.0f
+    public SongInfo SelectedSong            { get; set; }           // 현재 선택된 곡 정보
+    public int      SelectedDiffIdx         { get; set; } = 0;      // 현재 선택된 난이도 인덱스(0: easy, 1: normal, 2: hard), 기본값: 0(easy)
+    public float    SelectedSpeed           { get; set; } = 1.0f;   // 현재 선택된 레인 속도, 기본값: 1.0f
+    public int      InputOffsetStep         { get; set; } = 0;      // 부동소수점 오차 문제를 해결하기 위해 판정선 조절을 정수 연산을 거쳐 작업
+    public double   SelectedInputOffset => InputOffsetStep * 0.005; // 판정선 조절값
 
     // PlayScene에서 ResultScene으로 전달할 정보
     public enum Rank { S, A, B, C, D } // 랭크 등급 열거형 정의

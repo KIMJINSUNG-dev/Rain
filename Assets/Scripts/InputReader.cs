@@ -28,9 +28,10 @@ public class InputReader : MonoBehaviour
     private InputAction _playSpeedUp, _playSpeedDown;   // 플레이 속도 조절 입력 InputAction
 
     // _navigationMap에서 UDLR 탐색과 확인, 플레이 속도 조절 입력을 관리하는 InputAction들
-    private InputAction _navigate;                  // UDLR 탐색 입력 InputAction
-    private InputAction _confirm;                   // 확인 입력 InputAction
-    private InputAction _navSpeedUp, _navSpeedDown; // 플레이 속도 조절 입력 InputAction
+    private InputAction _navigate;                    // UDLR 탐색 입력 InputAction
+    private InputAction _confirm;                     // 확인 입력 InputAction
+    private InputAction _navSpeedUp, _navSpeedDown;   // 플레이 속도 조절 입력 InputAction
+    private InputAction _navOffsetUp, _navOffsetDown; // 판정선 조절 입력 InputAction
 
     // 외부에서 구독할 수 있는 이벤트들, 각 입력이 발생했을 때 해당 이벤트가 호출됨
     public event Action<int, double> OnLanePressed;      // 레인 입력 Action: int 매개변수 => 레인 번호(0~3), double 매개변수 => 입력이 발생한 시간(초)
@@ -38,6 +39,8 @@ public class InputReader : MonoBehaviour
     public event Action              OnPausePressed;     // 일시정지 입력 Action
     public event Action              OnSpeedUp;          // 플레이 속도 증가 입력 Action
     public event Action              OnSpeedDown;        // 플레이 속도 감소 입력 Action
+    public event Action              OnOffsetUp;         // 판정선 조절값 증가 입력 Action
+    public event Action              OnOffsetDown;       // 판정선 조절값 감소 입력 Action
     public event Action<Vector2>     OnNavigate;         // UDLR 탐색 입력 Action: Vector2 매개변수 => 탐색 방향 벡터(x: -1=좌, 1=우, y: -1=하, 1=상)
     public event Action              OnNavigateCanceled; // UDLR 탐색 입력 취소 Action
     public event Action              OnConfirmed;        // 확인 입력 Action
@@ -89,10 +92,12 @@ public class InputReader : MonoBehaviour
         _playSpeedDown = _gamePlayMap.FindAction("SpeedDown", throwIfNotFound: true);
 
         // _navigationMap에서 UDLR 탐색과 확인, 플레이 속도 조절 입력을 관리하는 Action들을 찾아서 변수에 할당, 찾지 못하면 예외 발생
-        _navigate     = _navigationMap.FindAction("Navigate", throwIfNotFound: true);
-        _confirm      = _navigationMap.FindAction("Confirm", throwIfNotFound: true);
-        _navSpeedUp   = _navigationMap.FindAction("SpeedUp", throwIfNotFound: true);
-        _navSpeedDown = _navigationMap.FindAction("SpeedDown", throwIfNotFound: true);
+        _navigate      = _navigationMap.FindAction("Navigate", throwIfNotFound: true);
+        _confirm       = _navigationMap.FindAction("Confirm", throwIfNotFound: true);
+        _navSpeedUp    = _navigationMap.FindAction("SpeedUp", throwIfNotFound: true);
+        _navSpeedDown  = _navigationMap.FindAction("SpeedDown", throwIfNotFound: true);
+        _navOffsetUp   = _navigationMap.FindAction("OffsetUp", throwIfNotFound: true);
+        _navOffsetDown = _navigationMap.FindAction("OffsetDown", throwIfNotFound: true);
 
         // 각 Action에 대한 콜백 등록
         // OnLanePressed: ctx.time을 사용하지 않고 AudioSettings.dspTime을 사용하여
@@ -108,17 +113,19 @@ public class InputReader : MonoBehaviour
         _laneJ.canceled += ctx => OnLaneReleased?.Invoke(2);
         _laneK.canceled += ctx => OnLaneReleased?.Invoke(3);
 
-        _pauseAction.performed   += ctx => OnPausePressed?.Invoke();
-        _playSpeedUp.performed   += ctx => OnSpeedUp?.Invoke();
-        _playSpeedDown.performed += ctx => OnSpeedDown?.Invoke();
+        _pauseAction.performed    += ctx => OnPausePressed?.Invoke();
+        _playSpeedUp.performed    += ctx => OnSpeedUp?.Invoke();
+        _playSpeedDown.performed  += ctx => OnSpeedDown?.Invoke();
 
         // navigate Action의 경우 OnLanePressed와 마찬가지로 입력 해제의 경우 canceled 이벤트도 처리함
         _navigate.performed += ctx => OnNavigate?.Invoke(ctx.ReadValue<Vector2>());
         _navigate.canceled  += ctx => OnNavigateCanceled?.Invoke();
 
-        _confirm.performed      += ctx => OnConfirmed?.Invoke();
-        _navSpeedUp.performed   += ctx => OnSpeedUp?.Invoke();
-        _navSpeedDown.performed += ctx => OnSpeedDown?.Invoke();
+        _confirm.performed       += ctx => OnConfirmed?.Invoke();
+        _navSpeedUp.performed    += ctx => OnSpeedUp?.Invoke();
+        _navSpeedDown.performed  += ctx => OnSpeedDown?.Invoke();
+        _navOffsetUp.performed   += ctx => OnOffsetUp?.Invoke();
+        _navOffsetDown.performed += ctx => OnOffsetDown?.Invoke();
     }
 
 

@@ -241,7 +241,8 @@ public class PlaySceneController : MonoBehaviour
     private void HandleLanePressed(int lane, double pressTime)
     {
         if(_isPaused || _isEnded || _activeNotes.Count == 0) return;
-        double pressGameTime = pressTime - _musicStartTime - _pausedDuration;
+        // SelectedInputOffset으로 판정선 조절값 반영
+        double pressGameTime = pressTime - _musicStartTime - _pausedDuration + GameManager.Instance.SelectedInputOffset;
         if (pressGameTime < 0) return; // 카운트다운 중에는 입력 무시
 
         NoteObject closest = null;
